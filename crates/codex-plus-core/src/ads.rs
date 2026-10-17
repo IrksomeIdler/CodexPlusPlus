@@ -1,16 +1,27 @@
 use serde_json::{Value, json};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(feature = "disable-community"))]
 const VOLCENGINE_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-volcengine.png");
+#[cfg(not(feature = "disable-community"))]
 const PACKYCODE_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-packycode.png");
+#[cfg(not(feature = "disable-community"))]
 const TOKEN_BRIDGE_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-0029.svg");
+#[cfg(not(feature = "disable-community"))]
 const APIKEY_FUN_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-apikey-fun.png");
+#[cfg(not(feature = "disable-community"))]
 const RAWCHAT_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-rawchat.svg");
+#[cfg(not(feature = "disable-community"))]
 const RUNAPI_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-runapi.png");
+#[cfg(not(feature = "disable-community"))]
 const BAIKEWEI_AI_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-baikewei-ai.jpg");
+#[cfg(not(feature = "disable-community"))]
 const DEEPKEY_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-deepkey.png");
+#[cfg(not(feature = "disable-community"))]
 const APIMART_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-apimart.png");
+#[cfg(not(feature = "disable-community"))]
 const FENNO_AI_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-fenno-ai.png");
+#[cfg(not(feature = "disable-community"))]
 const QINIU_AI_IMAGE: &[u8] = include_bytes!("../../../docs/images/sponsor-qiniu-ai.png");
 
 pub const DEFAULT_AD_LIST_URLS: [&str; 2] = [
@@ -99,19 +110,27 @@ fn fill_known_remote_logos(ads: &mut [Value]) {
 }
 
 fn known_remote_logo(id: &str) -> Option<(&'static str, &'static [u8])> {
-    match id {
-        "volcengine-ark-agent-plan" => Some(("image/png", VOLCENGINE_IMAGE)),
-        "0029-token-bridge" => Some(("image/png", PACKYCODE_IMAGE)),
-        "0055-token-bridge" => Some(("image/svg+xml", TOKEN_BRIDGE_IMAGE)),
-        "apikey-fun-ai-relay" => Some(("image/png", APIKEY_FUN_IMAGE)),
-        "rawchat-codex-relay" => Some(("image/svg+xml", RAWCHAT_IMAGE)),
-        "runapi-openrouter-alternative" => Some(("image/png", RUNAPI_IMAGE)),
-        "baikewei-ai" => Some(("image/jpeg", BAIKEWEI_AI_IMAGE)),
-        "deepkey-api-key" => Some(("image/png", DEEPKEY_IMAGE)),
-        "apimart" => Some(("image/png", APIMART_IMAGE)),
-        "fenno-ai" => Some(("image/png", FENNO_AI_IMAGE)),
-        "qiniu-ai" => Some(("image/png", QINIU_AI_IMAGE)),
-        _ => None,
+    #[cfg(not(feature = "disable-community"))]
+    {
+        match id {
+            "volcengine-ark-agent-plan" => Some(("image/png", VOLCENGINE_IMAGE)),
+            "0029-token-bridge" => Some(("image/png", PACKYCODE_IMAGE)),
+            "0055-token-bridge" => Some(("image/svg+xml", TOKEN_BRIDGE_IMAGE)),
+            "apikey-fun-ai-relay" => Some(("image/png", APIKEY_FUN_IMAGE)),
+            "rawchat-codex-relay" => Some(("image/svg+xml", RAWCHAT_IMAGE)),
+            "runapi-openrouter-alternative" => Some(("image/png", RUNAPI_IMAGE)),
+            "baikewei-ai" => Some(("image/jpeg", BAIKEWEI_AI_IMAGE)),
+            "deepkey-api-key" => Some(("image/png", DEEPKEY_IMAGE)),
+            "apimart" => Some(("image/png", APIMART_IMAGE)),
+            "fenno-ai" => Some(("image/png", FENNO_AI_IMAGE)),
+            "qiniu-ai" => Some(("image/png", QINIU_AI_IMAGE)),
+            _ => None,
+        }
+    }
+    #[cfg(feature = "disable-community")]
+    {
+        let _ = id;
+        None
     }
 }
 
@@ -143,7 +162,14 @@ fn base64_encode(bytes: &[u8]) -> String {
 }
 
 pub async fn fetch_ad_list() -> anyhow::Result<Value> {
-    fetch_ad_list_from_urls(&DEFAULT_AD_LIST_URLS).await
+    #[cfg(feature = "disable-community")]
+    {
+        return Ok(json!({ "version": 1, "ads": [] }));
+    }
+    #[cfg(not(feature = "disable-community"))]
+    {
+        fetch_ad_list_from_urls(&DEFAULT_AD_LIST_URLS).await
+    }
 }
 
 pub fn cache_busted_ad_url(url: &str, version: u128) -> String {

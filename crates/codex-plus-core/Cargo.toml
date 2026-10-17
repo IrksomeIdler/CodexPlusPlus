@@ -51,6 +51,13 @@ windows = { version = "0.58", features = [
   "Win32_UI_WindowsAndMessaging",
 ] }
 
+[features]
+# 构建期禁用社区/推广内容（广告推荐、Telegram/Discord 社区链接）。
+disable-community = []
+# macOS 旧更新器的兼容壳（legacy-shim）及配套安装脚本测试。
+# 默认不启用，避免在非 macOS 环境下构建/测试无关的兼容二进制。
+legacy-shim = []
+
 [dev-dependencies]
 tempfile.workspace = true
 wiremock = "0.6"

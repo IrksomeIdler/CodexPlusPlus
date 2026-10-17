@@ -17,6 +17,7 @@ path = "src/main.rs"
 [[bin]]
 name = "codex-plus-legacy-shim"
 path = "src/legacy_shim.rs"
+required-features = ["legacy-shim"]
 
 [dependencies]
 anyhow.workspace = true
@@ -33,6 +34,12 @@ toml_edit.workspace = true
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
+[features]
+# 构建期禁用社区/推广内容（广告推荐、Telegram/Discord 社区链接）。
+disable-community = ["codex-plus-core/disable-community"]
+# macOS 旧更新器的兼容壳，默认不构建（见 legacy-shim 的 required-features）。
+legacy-shim = ["codex-plus-core/legacy-shim"]
 
 [dev-dependencies]
 rusqlite.workspace = true

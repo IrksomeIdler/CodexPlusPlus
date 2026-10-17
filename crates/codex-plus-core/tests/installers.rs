@@ -214,6 +214,7 @@ fn windows_installer_waits_for_normal_exit_and_cancels_without_writing_apps() {
 }
 
 #[test]
+#[cfg(feature = "legacy-shim")]
 fn macos_dmg_includes_one_visible_app_and_hidden_legacy_updater() {
     let script = std::fs::read_to_string("../../scripts/installer/macos/package-dmg.sh").unwrap();
     assert!(script.contains("ln -s /Applications \"$STAGE/Applications\""));

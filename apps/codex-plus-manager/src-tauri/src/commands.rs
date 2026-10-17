@@ -675,6 +675,8 @@ pub struct SkillsPayload {
 #[serde(rename_all = "camelCase")]
 pub struct StartupPayload {
     pub show_update: bool,
+    /// 构建期关闭社区/推广内容（广告推荐、Telegram/Discord 链接）。
+    pub community_disabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -906,6 +908,7 @@ pub fn startup_options() -> CommandResult<StartupPayload> {
         "启动参数已读取。",
         StartupPayload {
             show_update: startup_should_show_update(),
+            community_disabled: cfg!(feature = "disable-community"),
         },
     )
 }

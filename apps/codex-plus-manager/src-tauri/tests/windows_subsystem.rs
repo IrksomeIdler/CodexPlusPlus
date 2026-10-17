@@ -202,6 +202,7 @@ fn manager_launch_button_uses_the_embedded_runtime() {
 }
 
 #[test]
+#[cfg(feature = "legacy-shim")]
 fn macos_packager_builds_one_visible_native_gui_with_legacy_update_shim() {
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let packager = manifest_dir

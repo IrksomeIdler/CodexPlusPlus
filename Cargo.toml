@@ -39,3 +39,9 @@ uuid = { version = "1", features = ["v4"] }
 winresource = "0.1"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 zstd = "0.13"
+
+[profile.release]
+# 链接时优化（thin）：跨 crate 内联与去重，运行时更快，编译时间增加适中。
+lto = "thin"
+# 剥离符号表，减小发布二进制体积。
+strip = true

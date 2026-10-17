@@ -1044,6 +1044,7 @@ function syncMarketInstalledState(current: ScriptMarketResult | null, userScript
 
 type StartupResult = CommandResult<{
   showUpdate: boolean;
+  communityDisabled: boolean;
 }>;
 
 /** 左侧 Agent 切换栏的工具标识。后端 `list_tools` 返回同名字符串。 */
@@ -1286,6 +1287,7 @@ export function App() {
     message: t("尚未运行安装包更新。"),
   });
   const [ads, setAds] = useState<AdsResult | null>(null);
+  const [communityDisabled, setCommunityDisabled] = useState(false);
   const [scriptMarket, setScriptMarket] = useState<ScriptMarketResult | null>(null);
   const [launchForm, setLaunchForm] = useState({
     appPath: "",
@@ -3191,6 +3193,7 @@ export function App() {
     void refreshTools(true);
     void (async () => {
       const startup = await run(() => call<StartupResult>("startup_options"));
+      setCommunityDisabled(startup?.communityDisabled ?? false);
       const handledNavigation = await consumePendingManagerNavigation();
       if (!handledNavigation && startup?.showUpdate) {
         setRoute("about");
@@ -3662,6 +3665,7 @@ export function App() {
         tools={toolEntries}
         activeTool={activeTool}
         codexAppRunning={codexAppRunning}
+        communityDisabled={communityDisabled}
         route={route}
         theme={theme}
         onSelect={(toolId) => void switchTool(toolId)}
@@ -3676,6 +3680,7 @@ export function App() {
               const visibleRoutes = section.routes.filter((routeId) => {
                 const item = routes.find((candidate) => candidate.id === routeId);
                 if (!item) return false;
+                if (communityDisabled && (routeId === "pluginMarket" || routeId === "dreamSkin")) return false;
                 return !item.tool || item.tool === activeTool;
               });
               // 整节都被过滤掉时不渲染标题，免得 Grok 下出现一个空的分组标签。
@@ -3742,7 +3747,7 @@ export function App() {
           {route === "overview" ? (
             <OverviewScreen
               overview={overview}
-              ads={ads}
+              ads={communityDisabled ? null : ads}
               activeTool={activeTool}
               toolEntries={toolEntries}
               actions={actions}
@@ -3831,7 +3836,7 @@ export function App() {
               actions={actions}
             />
           ) : null}
-          {route === "dreamSkin" ? (
+          {route === "dreamSkin" && !communityDisabled ? (
             <DreamSkinScreen
               form={settingsForm}
               launchPending={launchPending}
@@ -3853,7 +3858,7 @@ export function App() {
             />
           ) : null}
           {route === "userScripts" ? <UserScriptsScreen settings={settings} market={scriptMarket} actions={actions} /> : null}
-          {route === "pluginMarket" ? <PluginMarketScreen /> : null}
+          {route === "pluginMarket" && !communityDisabled ? <PluginMarketScreen /> : null}
           {route === "recommendations" ? <RecommendationsScreen ads={ads} actions={actions} /> : null}
           {route === "agentCache" ? <AgentCachePanel /> : null}
           {route === "maintenance" ? (
@@ -3875,6 +3880,7 @@ export function App() {
               updateInstallProgress={updateInstallProgress}
               logs={logs}
               diagnostics={diagnostics}
+              communityDisabled={communityDisabled}
               actions={actions}
             />
           ) : null}
@@ -7784,6 +7790,7 @@ function AboutScreen({
   updateInstallProgress,
   logs,
   diagnostics,
+  communityDisabled,
   actions,
 }: {
   overview: OverviewResult | null;
@@ -7791,6 +7798,7 @@ function AboutScreen({
   updateInstallProgress: TaskProgress;
   logs: LogsResult | null;
   diagnostics: DiagnosticsResult | null;
+  communityDisabled: boolean;
   actions: Actions;
 }) {
   return (
@@ -7812,14 +7820,18 @@ function AboutScreen({
               <ExternalLink className="h-4 w-4" />
               {t("反馈问题")}
             </Button>
-            <Button onClick={() => void actions.openExternalUrl("https://discord.gg/y96kX7A76v")} variant="secondary">
-              <MessageCircle className="h-4 w-4" />
-              Discord
-            </Button>
-            <Button onClick={() => void actions.openExternalUrl("https://t.me/CodexPlusPlus")} variant="secondary">
-              <MessageCircle className="h-4 w-4" />
-              Telegram
-            </Button>
+            {communityDisabled ? null : (
+              <>
+                <Button onClick={() => void actions.openExternalUrl("https://discord.gg/y96kX7A76v")} variant="secondary">
+                  <MessageCircle className="h-4 w-4" />
+                  Discord
+                </Button>
+                <Button onClick={() => void actions.openExternalUrl("https://t.me/CodexPlusPlus")} variant="secondary">
+                  <MessageCircle className="h-4 w-4" />
+                  Telegram
+                </Button>
+              </>
+            )}
           </Toolbar>
         </CardContent>
       </Panel>
@@ -12328,6 +12340,7 @@ function ApplicationRail({
   tools,
   activeTool,
   codexAppRunning,
+  communityDisabled,
   route,
   theme,
   onSelect,
@@ -12337,12 +12350,16 @@ function ApplicationRail({
   tools: ToolEntry[];
   activeTool: ToolId;
   codexAppRunning: boolean;
+  communityDisabled: boolean;
   route: Route;
   theme: Theme;
   onSelect: (toolId: ToolId) => void;
   onNavigate: (route: Route) => void;
   onToggleTheme: () => void;
 }) {
+  const visibleGlobalRoutes = communityDisabled
+    ? globalNavigationRoutes.filter((routeId) => routeId !== "recommendations")
+    : globalNavigationRoutes;
   const languageLabel = getLanguage() === "en" ? t("切换到中文") : t("切换到英文");
   const themeLabel = theme === "dark" ? t("切换到浅色") : t("切换到深色");
   return (
@@ -12356,7 +12373,7 @@ function ApplicationRail({
       />
       <div className="rail-bottom">
         <nav className="rail-navigation" aria-label={t("系统")}>
-          {globalNavigationRoutes.map((routeId) => {
+          {visibleGlobalRoutes.map((routeId) => {
             const item = routes.find((candidate) => candidate.id === routeId);
             if (!item) return null;
             const Icon = item.icon;

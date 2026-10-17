@@ -361,6 +361,9 @@
   const codexPlusRailDestinationSelector = "[data-sidebar-destination]";
   const codexPlusExtensionsTab = "extensions";
   const codexPlusSponsorTab = "sponsor";
+  // 构建期开关：关闭广告推荐与社区链接（Telegram/Discord）。
+  // 由 assets.rs 在编译时按 disable-community feature 注入。
+  const codexPlusCommunityDisabled = !!window.__CODEX_PLUS_DISABLE_COMMUNITY__;
   // Codex 的界面缩放是给内层布局节点设 CSS zoom，不是改 documentElement。
   // 我们的 overlay 挂在 body 下、落在那棵缩放子树之外，只能自己读这个变量跟随。
   const codexPlusWindowZoomVar = "--codex-window-zoom";
