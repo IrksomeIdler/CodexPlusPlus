@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -14,6 +15,7 @@ const bash = process.platform === "win32"
       .find((path) => /\\Git\\(?:usr\\)?bin\\bash\.exe$/i.test(path))
       ?? join(process.env.ProgramFiles || "C:\\Program Files", "Git", "bin", "bash.exe")
   : "/bin/bash";
+const dmgTest = existsSync(bash) ? test : test.skip;
 
 // Run the actual packaging tail with synthetic disk commands, never real mounts.
 const fixture = `
@@ -108,7 +110,7 @@ async function runScenario(scenario: string) {
 }
 
 for (const scenario of ["success", "retry-convert", "late-convert", "delayed-output", "delayed", "already-gone", "force-only"]) {
-  test(`DMG packaging succeeds after ${scenario}`, async () => {
+  dmgTest(`DMG packaging succeeds after ${scenario}`, async () => {
     const result = await runScenario(scenario);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /out\/final\.dmg/);
@@ -137,7 +139,7 @@ for (const scenario of ["success", "retry-convert", "late-convert", "delayed-out
 }
 
 for (const scenario of ["no-device", "no-volume"]) {
-  test(`DMG packaging cleans up failed attach parsing: ${scenario}`, async () => {
+  dmgTest(`DMG packaging cleans up failed attach parsing: ${scenario}`, async () => {
     const result = await runScenario(scenario);
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stderr, /failed to find mounted DMG device and volume/);
@@ -152,7 +154,7 @@ for (const scenario of ["no-device", "no-volume"]) {
 }
 
 for (const scenario of ["fail-convert", "missing-output", "empty-output"]) {
-  test(`DMG packaging rejects ${scenario} instead of reporting create success`, async () => {
+  dmgTest(`DMG packaging rejects ${scenario} instead of reporting create success`, async () => {
     const result = await runScenario(scenario);
     assert.equal(result.status, 1, result.stderr);
     if (scenario === "fail-convert") {
@@ -167,7 +169,7 @@ for (const scenario of ["fail-convert", "missing-output", "empty-output"]) {
 }
 
 for (const scenario of ["busy", "info-error"]) {
-  test(`DMG packaging refuses conversion when detach is ${scenario}`, async () => {
+  dmgTest(`DMG packaging refuses conversion when detach is ${scenario}`, async () => {
     const result = await runScenario(scenario);
     assert.equal(result.status, 1, result.stderr);
     assert.doesNotMatch(result.trace, /^convert /m);

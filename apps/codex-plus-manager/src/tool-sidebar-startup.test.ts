@@ -16,6 +16,7 @@ it("广告请求持续未完成时，侧栏工具列表仍能加载", async () =
     call: async () => ({ showUpdate: false }),
     consumePendingManagerNavigation: async () => false,
     setRoute: noOp,
+    setCommunityDisabled: noOp,
     checkUpdate: noOp,
     refreshOverview: noOp,
     refreshAds: async () => { events.push("ads"); await pendingAds; },

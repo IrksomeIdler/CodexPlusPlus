@@ -242,7 +242,11 @@ fn app_paths_resolves_portable_current_link_to_directory_version() {
     std::fs::create_dir_all(&target).unwrap();
     std::fs::write(target.join("Codex.exe"), "").unwrap();
     std::fs::write(target.join("version"), "42.1.0\n").unwrap();
-    std::os::windows::fs::symlink_dir(&target, &current).unwrap();
+    if let Err(error) = std::os::windows::fs::symlink_dir(&target, &current) {
+        // 普通 Windows 账户未启用开发者模式时没有创建符号链接的特权。
+        eprintln!("跳过：当前环境无法创建目录符号链接：{error}");
+        return;
+    }
 
     assert_eq!(
         codex_app_version(&current).as_deref(),

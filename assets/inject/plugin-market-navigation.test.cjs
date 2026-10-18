@@ -73,6 +73,7 @@ function fixture(layout = "sidebar") {
     codexPlusSidebarPluginMarketId: "codex-plus-sidebar-plugin-market", codexPlusRailPluginMarketId: "codex-plus-rail-plugin-market",
     codexPlusSidebarNavId: "codex-plus-sidebar-nav", codexPlusMenuId: "codex-plus-menu", codexPlusPageClass: "codex-plus-page",
     codexPlusRailNavId: "codex-plus-rail-nav", codexPlusRailExtensionsId: "codex-plus-rail-extensions", codexPlusRailSponsorId: "codex-plus-rail-sponsor",
+    codexPlusCommunityDisabled: false,
     codexPlusRailSelector: 'nav[data-app-navigation-rail]', codexPlusRailDestinationSelector: "[data-sidebar-destination]",
     codexPlusDefaultExtensionIconPath: "", codexPlusExtensionConstants: { extensionAttribute: "data-codex-plus-ext" },
     codexPlusBackendStatus: { status: "ok" }, codexPlusActiveEntry: () => "", setCodexPlusSidebarNavActive() {},
