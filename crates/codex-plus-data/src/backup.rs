@@ -154,7 +154,12 @@ impl BackupStore {
             &serde_json::to_vec_pretty(&payload)?,
         )?;
         pending.committed = true;
-        File::open(self.path_for(&token))?.sync_all()?;
+        // Windows 上只读句柄无法 FlushFileBuffers，需用可写句柄完成持久化。
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(self.path_for(&token))?
+            .sync_all()?;
         Ok((token, entries))
     }
 
