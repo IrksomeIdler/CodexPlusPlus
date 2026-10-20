@@ -3618,6 +3618,44 @@ fn strip_reasoning_parameters(body: &mut Value) {
     }
 }
 
+/// Responses Lite 模型不支持 `json_schema`，但仍接受 `json_object`。
+/// 只降级结构化输出声明，不改工具参数里的 JSON Schema。
+fn downgrade_structured_output_for_lite_model(body: &mut Value, model: &str) -> bool {
+    if !has_json_schema_structured_output(body) {
+        return false;
+    }
+    if crate::model_catalog::catalog_model_uses_responses_lite(model) != Some(true) {
+        return false;
+    }
+    downgrade_structured_output_value(body)
+}
+
+fn has_json_schema_structured_output(body: &Value) -> bool {
+    let responses_format = body
+        .pointer("/text/format")
+        .is_some_and(|format| format.get("type").and_then(Value::as_str) == Some("json_schema"));
+    let chat_format = body
+        .get("response_format")
+        .is_some_and(|format| format.get("type").and_then(Value::as_str) == Some("json_schema"));
+    responses_format || chat_format
+}
+
+fn downgrade_structured_output_value(body: &mut Value) -> bool {
+    let responses_format = body
+        .pointer("/text/format")
+        .is_some_and(|format| format.get("type").and_then(Value::as_str) == Some("json_schema"));
+    let chat_format = body
+        .get("response_format")
+        .is_some_and(|format| format.get("type").and_then(Value::as_str) == Some("json_schema"));
+    if responses_format && let Some(format) = body.pointer_mut("/text/format") {
+        *format = json!({"type": "json_object"});
+    }
+    if chat_format {
+        body["response_format"] = json!({"type": "json_object"});
+    }
+    responses_format || chat_format
+}
+
 /// 用户明确选择严格上游契约时才投影请求；不修改 rollout，也不验证/伪造账号密文。
 fn project_strict_reasoning_history(body: &mut Value) -> anyhow::Result<()> {
     let Some(items) = body.get_mut("input").and_then(Value::as_array_mut) else { return Ok(()); };
@@ -3669,9 +3707,25 @@ async fn upstream_request_parts(
     {
         request_json["model"] = json!(model);
     }
-    let model = request_json.get("model").and_then(Value::as_str).unwrap_or("");
+    let model = request_json
+        .get("model")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    if downgrade_structured_output_for_lite_model(&mut request_json, &model) {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "protocol_proxy.structured_output_downgraded",
+            json!({
+                "relayId": relay.id,
+                "relayName": relay.name,
+                "model": model,
+                "from": "json_schema",
+                "to": "json_object"
+            }),
+        );
+    }
     let compatibility_enabled = relay.request_compatibility_enabled();
-    let reasoning_mode = if compatibility_enabled { relay.model_reasoning_parameters(model) } else { "auto" }.to_string();
+    let reasoning_mode = if compatibility_enabled { relay.model_reasoning_parameters(&model) } else { "auto" }.to_string();
     let requested_effort = request_json.pointer("/reasoning/effort").cloned();
     if reasoning_mode == "omit" { strip_reasoning_parameters(&mut request_json); }
     if relay.protocol == RelayProtocol::Responses && relay.strict_responses_reasoning && compatibility_enabled {
@@ -8795,6 +8849,38 @@ fn is_openai_o_series(model: &str) -> bool {
 #[cfg(test)]
 mod response_compatibility_tests {
     use super::*;
+
+    #[test]
+    fn lite_models_downgrade_structured_output_to_json_object() {
+        let mut responses = json!({
+            "text": {"format": {"type": "json_schema", "name": "result", "schema": {}}}
+        });
+        assert!(downgrade_structured_output_value(&mut responses));
+        assert_eq!(responses["text"]["format"], json!({"type": "json_object"}));
+
+        let mut chat = json!({
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "result", "schema": {}}
+            }
+        });
+        assert!(downgrade_structured_output_value(&mut chat));
+        assert_eq!(chat["response_format"], json!({"type": "json_object"}));
+    }
+
+    #[test]
+    fn structured_output_downgrade_keeps_tool_json_schema() {
+        let mut body = json!({
+            "text": {"format": {"type": "json_schema", "schema": {}}},
+            "tools": [{"type": "function", "parameters": {"type": "object"}}]
+        });
+        assert!(downgrade_structured_output_value(&mut body));
+        assert_eq!(body["text"]["format"], json!({"type": "json_object"}));
+        assert_eq!(
+            body["tools"][0]["parameters"],
+            json!({"type": "object"})
+        );
+    }
 
     #[test]
     fn responses_tool_search_outputs_merge_duplicate_namespaces() {

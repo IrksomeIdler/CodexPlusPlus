@@ -1100,6 +1100,39 @@ fn models_from_config_model_catalog_json(
     )
 }
 
+/// 读取当前 config.toml 指向的模型 catalog，判断模型是否使用 Responses Lite。
+/// Lite 模型不支持 `json_schema` 结构化输出；字段缺失按 false 处理。
+pub(crate) fn catalog_model_uses_responses_lite(model: &str) -> Option<bool> {
+    catalog_model_uses_responses_lite_from(&codex_home_dir(), model)
+}
+
+fn catalog_model_uses_responses_lite_from(home: &Path, model: &str) -> Option<bool> {
+    let (_, effective, _) = load_codex_config(&home.join("config.toml"));
+    let raw_path = string_value(effective.get("model_catalog_json"));
+    if raw_path.is_empty() {
+        return None;
+    }
+    let path = resolve_config_path(&home, &raw_path);
+    let payload = serde_json::from_str::<Value>(&std::fs::read_to_string(path).ok()?).ok()?;
+    let model = crate::model_suffix::normalize_model_key(model);
+    let entries = payload.get("models").and_then(Value::as_array)?;
+    let entry = entries.iter().find(|entry| {
+        let slug = entry.get("slug").and_then(Value::as_str).unwrap_or("");
+        let normalized = crate::model_suffix::normalize_model_key(slug);
+        normalized.eq_ignore_ascii_case(&model)
+            || normalized
+                .rsplit('/')
+                .next()
+                .is_some_and(|tail| tail.eq_ignore_ascii_case(&model))
+    })?;
+    Some(
+        entry
+            .get("use_responses_lite")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+    )
+}
+
 fn resolve_config_path(home: &Path, value: &str) -> PathBuf {
     let path = PathBuf::from(value);
     if path.is_absolute() {
@@ -1214,6 +1247,43 @@ fn unquote_toml_string(value: &str) -> String {
 #[cfg(test)]
 mod model_fetch_tests {
     use super::*;
+
+    #[test]
+    fn catalog_lite_flag_identifies_models_without_json_schema_output() {
+        let home = tempfile::tempdir().unwrap();
+        let catalog = home.path().join("model-catalogs.json");
+        std::fs::write(
+            &catalog,
+            r#"{"models":[
+                {"slug":"mimo-v2.6-pro","use_responses_lite":true},
+                {"slug":"deepseek-flash","use_responses_lite":false},
+                {"slug":"plain-model"}
+            ]}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            home.path().join("config.toml"),
+            "model_catalog_json = 'model-catalogs.json'\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            catalog_model_uses_responses_lite_from(home.path(), "mimo-v2.6-pro"),
+            Some(true)
+        );
+        assert_eq!(
+            catalog_model_uses_responses_lite_from(home.path(), "deepseek-flash"),
+            Some(false)
+        );
+        assert_eq!(
+            catalog_model_uses_responses_lite_from(home.path(), "plain-model"),
+            Some(false)
+        );
+        assert_eq!(
+            catalog_model_uses_responses_lite_from(home.path(), "missing-model"),
+            None
+        );
+    }
 
     #[test]
     fn relay_profile_model_catalog_keeps_configured_default_after_model_list_sorting() {
